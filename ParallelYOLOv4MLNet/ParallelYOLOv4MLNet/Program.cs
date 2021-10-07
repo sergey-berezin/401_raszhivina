@@ -8,6 +8,7 @@ using System.IO;
 using static Microsoft.ML.Transforms.Image.ImageResizingEstimator;
 using System.Threading.Tasks.Dataflow;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace ParallelYOLOv4MLNet
 {
@@ -33,11 +34,12 @@ namespace ParallelYOLOv4MLNet
             {
                 for (int i = 0; i < mainYoloV4.Count; i++)
                 {
-                    var r = mainYoloV4.bufferBlock.Receive();
+                    var results = mainYoloV4.bufferBlock.Receive();
                     num++;
                     Console.WriteLine("{0:0.00}%", (double)num * 100 / mainYoloV4.Count); 
-                    foreach(var item in r) {
-                        Console.WriteLine(item.Label); 
+                    var query = results.GroupBy(x => x.Label);
+                    foreach(var item in query) {
+                        Console.WriteLine($"{item.Key} - {item.Count()}"); 
                     } 
                 }
             });
