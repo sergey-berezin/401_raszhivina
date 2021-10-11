@@ -22,10 +22,9 @@ namespace Model
         const string modelPath = @"../../../Models/yolov4.onnx";
 
         public MainYoloV4(string imageFolder) {
-            imageNames = Directory.GetFiles(imageFolder);
+            imageNames = Directory.GetFiles(imageFolder, "*.jpg");
             bufferBlock = new BufferBlock<IReadOnlyList<YoloV4Result>>();
             Count = imageNames.Length;
-
         }
 
         public void GetResult() {
@@ -69,27 +68,6 @@ namespace Model
                     var results = predict.GetResults(classesNames, 0.3f, 0.7f);
                     bufferBlock.Post(results);
                     
-
-                    /*using (var g = Graphics.FromImage(bitmap))
-                    {
-                        foreach (var res in results)
-                        {
-                            // draw predictions
-                            var x1 = res.BBox[0];
-                            var y1 = res.BBox[1];
-                            var x2 = res.BBox[2];
-                            var y2 = res.BBox[3];
-                            g.DrawRectangle(Pens.Red, x1, y1, x2 - x1, y2 - y1);
-                            using (var brushes = new SolidBrush(Color.FromArgb(50, Color.Red)))
-                            {
-                                g.FillRectangle(brushes, x1, y1, x2 - x1, y2 - y1);
-                            }
-
-                            g.DrawString(res.Label + " " + res.Confidence.ToString("0.00"),
-                                         new Font("Arial", 12), Brushes.Blue, new PointF(x1, y1));
-                        }
-                        bitmap.Save(Path.Combine(imageOutputFolder, Path.ChangeExtension(Path.GetFileName(imageName), "_processed" + Path.GetExtension(Path.GetFileName(imageName)))));
-                    }*/
                 }
             }, new ExecutionDataflowBlockOptions
             {

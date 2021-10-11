@@ -15,13 +15,10 @@ namespace ParallelYOLOv4MLNet
    
     class Program
     {
-        const string imageFolder = @"Assets/Images";
-
-        const string imageOutputFolder = @"Assets/Output";
-
         static void Main()
         {
-            Directory.CreateDirectory(imageOutputFolder);
+            //const string imageFolder = @"Images";
+            string imageFolder = Console.ReadLine();
 
             var mainYoloV4 = new MainYoloV4(imageFolder);
 
@@ -30,13 +27,13 @@ namespace ParallelYOLOv4MLNet
 
             int num = 0;
             
-            var receive = Task.Run(() =>
+            var receive = Task.Factory.StartNew(() =>
             {
                 for (int i = 0; i < mainYoloV4.Count; i++)
                 {
                     var results = mainYoloV4.bufferBlock.Receive();
                     num++;
-                    Console.WriteLine("{0:0.00}%", (double)num * 100 / mainYoloV4.Count); 
+                    Console.WriteLine("Обработано {0:0.00}%", (double)num * 100 / mainYoloV4.Count); 
                     var query = results.GroupBy(x => x.Label);
                     foreach(var item in query) {
                         Console.WriteLine($"{item.Key} - {item.Count()}"); 
@@ -44,15 +41,12 @@ namespace ParallelYOLOv4MLNet
                 }
             });
 
-
             mainYoloV4.GetResult();
             
             receive.Wait();
 
             sw.Stop();
             Console.WriteLine($"Done in {sw.ElapsedMilliseconds}ms.");
-
-            
         }
     }
 }
