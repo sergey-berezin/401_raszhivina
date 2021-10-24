@@ -13,8 +13,8 @@ namespace Model
 {
     public class MainYoloV4
     {
-        public int Count;
-        public BufferBlock<IReadOnlyList<YoloV4Result>> bufferBlock;
+        public int Count { get; set; }
+        //public BufferBlock<IReadOnlyList<YoloV4Result>> bufferBlock4;
         string[] imageNames;
 
         static readonly string[] classesNames = new string[] { "person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed", "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush" };
@@ -23,11 +23,10 @@ namespace Model
 
         public MainYoloV4(string imageFolder) {
             imageNames = Directory.GetFiles(imageFolder, "*.jpg");
-            bufferBlock = new BufferBlock<IReadOnlyList<YoloV4Result>>();
             Count = imageNames.Length;
         }
 
-        public void GetResult() {
+        public void GetResult(BufferBlock<IReadOnlyList<YoloV4Result>> bufferBlock) {
             var getResult = new ActionBlock<string>(imageName =>
             {
                 MLContext mlContext = new MLContext();
@@ -71,14 +70,12 @@ namespace Model
                 }
             }, new ExecutionDataflowBlockOptions
             {
-                MaxDegreeOfParallelism = 4
+                MaxDegreeOfParallelism = Environment.ProcessorCount
             });
             
-            Parallel.ForEach (imageNames, imageName => 
-            {
+            foreach (var imageName in imageNames) {
                 getResult.Post(imageName);
-            });
-
+            }
 
             getResult.Complete();
 
