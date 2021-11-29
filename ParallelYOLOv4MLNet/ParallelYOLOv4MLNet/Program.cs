@@ -1,15 +1,12 @@
 ﻿using Model;
-using Microsoft.ML;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
-using System.IO;
-using static Microsoft.ML.Transforms.Image.ImageResizingEstimator;
 using System.Threading.Tasks.Dataflow;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Concurrent;
+using System.Threading;
 
 namespace ParallelYOLOv4MLNet
 {
@@ -18,16 +15,20 @@ namespace ParallelYOLOv4MLNet
     {
         static void Main()
         {
-            //const string imageFolder = "/Users/dasharazzhivina/Desktop/401_raszhivina/ParallelYOLOv4MLNet/ParallelYOLOv4MLNet/Images";
-            string imageFolder = Console.ReadLine();
+            const string imageFolder = "/Users/dasharazzhivina/Desktop/401_raszhivina/ParallelYOLOv4MLNet/ParallelYOLOv4MLNet/Images";
+            //string imageFolder = Console.ReadLine();
 
             var mainYoloV4 = new MainYoloV4(imageFolder);
+
+            CancellationTokenSource cts = new CancellationTokenSource();
+        
+            CancellationToken ct = cts.Token;
 
             var sw = new Stopwatch();
             sw.Start();
 
             int num = 0;
-            var bufferBlock = new BufferBlock<IReadOnlyList<YoloV4Result>>();
+            var bufferBlock = new BufferBlock<KeyValuePair<string, IReadOnlyList<YoloV4Result>>>();
             var output = new ConcurrentBag<YoloV4Result>();
             
             var receive = Task.Factory.StartNew(() =>
@@ -35,7 +36,7 @@ namespace ParallelYOLOv4MLNet
                 for (int i = 0; i < mainYoloV4.Count; i++)
                 {
                     var results = bufferBlock.Receive();
-                    foreach(var item in results) {
+                    foreach(var item in results.Value) {
                         output.Add(item);
                     }
                     num++;
@@ -47,7 +48,7 @@ namespace ParallelYOLOv4MLNet
                 }
             }, TaskCreationOptions.LongRunning);
 
-            mainYoloV4.GetResult(bufferBlock);
+            mainYoloV4.GetResult(bufferBlock, ct);
             
             receive.Wait();
 

@@ -1,12 +1,12 @@
 ﻿using Microsoft.ML;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using static Microsoft.ML.Transforms.Image.ImageResizingEstimator;
 using System.Threading.Tasks.Dataflow;
-using System.Threading.Tasks;
+using System.Threading;
+
 
 
 namespace Model
@@ -14,21 +14,24 @@ namespace Model
     public class MainYoloV4
     {
         public int Count { get; set; }
-        //public BufferBlock<IReadOnlyList<YoloV4Result>> bufferBlock4;
         string[] imageNames;
 
         static readonly string[] classesNames = new string[] { "person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed", "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush" };
 
-        const string modelPath = @"../../../Models/yolov4.onnx";
+        const string modelPath = "/Users/dasharazzhivina/Desktop/Models/yolov4.onnx";
 
         public MainYoloV4(string imageFolder) {
             imageNames = Directory.GetFiles(imageFolder, "*.jpg");
             Count = imageNames.Length;
         }
 
-        public void GetResult(BufferBlock<IReadOnlyList<YoloV4Result>> bufferBlock) {
+        public void GetResult(BufferBlock<KeyValuePair<string, IReadOnlyList<YoloV4Result>>> bufferBlock, CancellationToken ct) {
             var getResult = new ActionBlock<string>(imageName =>
             {
+                if(ct.IsCancellationRequested) {
+                    return;
+                }
+
                 MLContext mlContext = new MLContext();
 
                 var pipeline = mlContext.Transforms.ResizeImages(inputColumnName: "bitmap", outputColumnName: "input_1:0", imageWidth: 416, imageHeight: 416, resizing: ResizingKind.IsoPad)
@@ -65,12 +68,12 @@ namespace Model
 
                     var predict = predictionEngine.Predict(new YoloV4BitmapData() { Image = bitmap });
                     var results = predict.GetResults(classesNames, 0.3f, 0.7f);
-                    bufferBlock.Post(results);
-                    
+                    bufferBlock.Post(new KeyValuePair<string, IReadOnlyList<YoloV4Result>>(imageName, results));
                 }
             }, new ExecutionDataflowBlockOptions
             {
-                MaxDegreeOfParallelism = Environment.ProcessorCount
+                MaxDegreeOfParallelism = Environment.ProcessorCount,
+                CancellationToken = ct
             });
             
             foreach (var imageName in imageNames) {
@@ -78,8 +81,9 @@ namespace Model
             }
 
             getResult.Complete();
-
-            getResult.Completion.Wait();
+            try {
+                getResult.Completion.Wait();
+            } catch {}
 
         }
     }
