@@ -22,6 +22,20 @@ namespace MyApp.ViewModels
         
         private CancellationToken ct;
 
+        private bool enable = true;
+        public bool Enable
+        {
+            get
+            {
+                return enable;
+            }
+            set
+            {
+                enable = value;
+                OnPropertyChanged("Enable");
+            }
+        }
+
         public string ImageFolder
         {
             get
@@ -113,6 +127,7 @@ namespace MyApp.ViewModels
 
         public async void Detection()
         {
+            Enable = false;
             string imageFolder = ImageFolder;
             var mainYoloV4 = new MainYoloV4(imageFolder);
             DetectedClass.Clear();
@@ -134,7 +149,7 @@ namespace MyApp.ViewModels
                             objectDict[item.Label] = new ConcurrentDictionary<string, bool>();
                         }
                         objectDict[item.Label].TryAdd(results.Key, true);
-                        //Console.WriteLine($"label: {item.Label} path: {results.Key}");
+                        Console.WriteLine($"label: {item.Label} path: {results.Key}");
                     }
                 }
             }, TaskCreationOptions.LongRunning);
@@ -147,6 +162,7 @@ namespace MyApp.ViewModels
             await f;
             await receive; 
             
+            Enable = true;
         }
     }
 }
