@@ -149,7 +149,7 @@ namespace MyApp.ViewModels
                             objectDict[item.Label] = new ConcurrentDictionary<string, bool>();
                         }
                         objectDict[item.Label].TryAdd(results.Key, true);
-                        Console.WriteLine($"label: {item.Label} path: {results.Key}");
+                        //Console.WriteLine($"label: {item.Label} path: {results.Key}");
                     }
                 }
             }, TaskCreationOptions.LongRunning);
