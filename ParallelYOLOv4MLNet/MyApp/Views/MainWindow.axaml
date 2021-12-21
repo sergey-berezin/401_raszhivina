@@ -17,6 +17,7 @@
             <Button Content="Open..." Click="MenuItem_Click_Open"/>
             <Button Content="Start" Click="MenuItem_Click_Start" IsEnabled="{Binding Enable}"/>
             <Button Content="Cencel" Click="MenuItem_Click_Cencel"/>
+            <Button Content="Clear" Click="MenuItem_Click_Clear"/>
         </StackPanel>
 
         <TextBlock Grid.Column="0" Text="{Binding ImageFolder}" TextWrapping="Wrap" Margin="10,40,0,0"/>

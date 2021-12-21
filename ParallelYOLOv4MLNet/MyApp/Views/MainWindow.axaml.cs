@@ -37,7 +37,12 @@ namespace MyApp.Views
         private void MenuItem_Click_Cencel(object sender, RoutedEventArgs e)
         {
             model.Cencel();
-        }       
+        }    
+
+        private void MenuItem_Click_Clear(object sender, RoutedEventArgs e)
+        {
+            model.Clear();
+        } 
 
     }
 }
