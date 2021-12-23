@@ -19,13 +19,13 @@ namespace MyApp {
         public byte[] Image { get; set; }
     }
 
-    class ImageDbContext : DbContext 
+    public class ImageDbContext : DbContext 
     {
         public DbSet<DetectedObject> DetectedObjects { get; set; }
         public DbSet<ObjectDetails> DetectedObjectDetails { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder o) 
-            => o.UseLazyLoadingProxies().UseSqlite("Data Source=detectedObjects.db");
+            => o.UseLazyLoadingProxies().UseSqlite("Data Source=/Users/dasharazzhivina/Desktop/401_raszhivina/ParallelYOLOv4MLNet/MyApp/detectedObjects.db");
 
         public bool ImageInDb(DetectedObject obj)
         {

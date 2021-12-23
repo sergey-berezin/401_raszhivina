@@ -9,6 +9,8 @@ using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using Avalonia.Media.Imaging;
 using System.Threading;
+using System.Net.Http;
+using Newtonsoft.Json;
 
 
 namespace MyApp.ViewModels
@@ -19,8 +21,7 @@ namespace MyApp.ViewModels
         private ConcurrentDictionary<string, ConcurrentBag<Bitmap>> objectDict;
         private string _imageFolder = "/Users/dasharazzhivina/Desktop/401_raszhivina/ParallelYOLOv4MLNet/ParallelYOLOv4MLNet/Images";
         private CancellationTokenSource cts = new CancellationTokenSource();
-        
-        private CancellationToken ct;
+        HttpClient client = new HttpClient();
 
 
         private bool enable = true;
@@ -88,21 +89,19 @@ namespace MyApp.ViewModels
         }
 
         public MainWindowViewModel() {
-            ct = cts.Token;
             objectDict = new ConcurrentDictionary<string, ConcurrentBag<Bitmap>>();
             ObjectDict_from_Db();
         }
 
-        public void ObjectDict_from_Db() {
+        public async void ObjectDict_from_Db() {
 
             DetectedClass.Clear();
             objectDict.Clear();
             Images.Clear();
-
-
-            using (var db = new ImageDbContext())
-            {
-                foreach (var item in db.DetectedObjects)
+            try {
+                string result = await client.GetStringAsync("http://localhost:5000/api/Detection/get");
+                var objects = JsonConvert.DeserializeObject<List<DetectedObject>>(result);
+                foreach (var item in objects)
                 {
                     if(!objectDict.ContainsKey(item.Label)) {
                         DetectedClass.Add(item.Label);
@@ -113,6 +112,10 @@ namespace MyApp.ViewModels
                     objectDict[item.Label].Add(toAvalonia(img));
                 }
             }
+            catch (HttpRequestException ex) {
+                Console.WriteLine("Server: " + ex.Message);
+            }
+            
         }
             
 
@@ -146,47 +149,43 @@ namespace MyApp.ViewModels
             }
         }
 
-        public void Cencel() {
-            cts.Cancel();
-            cts = new CancellationTokenSource();
+        public async void Cencel() {
+            try {
+                await client.GetAsync("http://localhost:5000/api/Detection/cencel");
+            }
+            catch (HttpRequestException ex) {
+                Console.WriteLine("Server: " + ex.Message);
+            }
             Enable = true;
         }
 
-        public void Clear() {
-            using (var db = new ImageDbContext())
-            {
-                foreach (var item in db.DetectedObjects)
-                {
-                    db.DetectedObjects.Remove(item);
-                }
-
-                foreach (var item in db.DetectedObjectDetails)
-                {
-                    db.DetectedObjectDetails.Remove(item);
-                }
-                db.SaveChanges();
+        public async void Clear() {
+            
+            DetectedClass.Clear();
+            objectDict.Clear();
+            Images.Clear();
+            try {
+                await client.DeleteAsync("http://localhost:5000/api/Detection/clear");
             }
-            ObjectDict_from_Db();
+            catch (HttpRequestException ex) {
+                Console.WriteLine("Server: " + ex.Message);
+            }
         }
 
         public async void Detection()
         {
             Enable = false;
-            string imageFolder = ImageFolder;
-            var mainYoloV4 = new MainYoloV4(imageFolder);
+
             DetectedClass.Clear();
             objectDict.Clear();
             Images.Clear();
 
-            var bufferBlock = new BufferBlock<KeyValuePair<string, IReadOnlyList<YoloV4Result>>>();
-            
-            
-            var receive = Task.Factory.StartNew(() =>
-            {
-                for (int i = 0; i < mainYoloV4.Count; i++)
-                {
-                    var results = bufferBlock.Receive();
-                    
+            string imageFolder = ImageFolder;
+
+            try {
+                var result = await client.GetStringAsync("http://localhost:5000/api/Detection/start?imageFolder=" + imageFolder);
+                var images = JsonConvert.DeserializeObject<ConcurrentBag<KeyValuePair<string, IReadOnlyList<YoloV4Result>>>>(result);
+                foreach(var results in images) {
                     foreach(var item in results.Value) {
                         if(!objectDict.ContainsKey(item.Label)) {
                             DetectedClass.Add(item.Label);
@@ -194,36 +193,17 @@ namespace MyApp.ViewModels
                         }
                         var x1 = (int) item.BBox[0];
                         var y1 = (int) item.BBox[1];
-                        var x2 = (int) item.BBox[2];
+                        var x2 = (int) item.BBox[2]; 
                         var y2 = (int) item.BBox[3];
                         var img = cropBitmap(results.Key, x1, y1, x2, y2);
                         objectDict[item.Label].Add(toAvalonia(img));
-                        //Console.WriteLine($"label: {item.Label} bbox: {item.BBox[0]}, {item.Bbox[1]}");
-                        using(var db = new ImageDbContext())  {
-                            var obj = new DetectedObject { 
-                                X1 = x1, 
-                                Y1 = y1, 
-                                X2 = x2, 
-                                Y2 = y2,
-                                Label = item.Label,
-                                Details = new ObjectDetails { Image = imageToByteArray(img)}
-                            };
-                            if(!db.ImageInDb(obj)) {
-                                db.Add(obj);
-                                db.SaveChanges();
-                            }
-                        }
                     }
                 }
-            }, TaskCreationOptions.LongRunning);
-
-            var f = Task.Factory.StartNew(() =>
-            {
-                mainYoloV4.GetResult(bufferBlock, ct);
-            }, TaskCreationOptions.LongRunning);
-
-            await f;
-            await receive; 
+            }
+            catch (HttpRequestException ex) {
+                Console.WriteLine("Server: " + ex.Message);
+            }
+            
             
             Enable = true;
         }
@@ -264,5 +244,6 @@ namespace MyApp.ViewModels
                 return new Avalonia.Media.Imaging.Bitmap(memory);
             }
         }
+
     }
 }
